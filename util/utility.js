@@ -30,7 +30,13 @@ customUtils = {
         let _self = this;
         return new Promise(function (resolve, reject) {
             if (fs.existsSync(directoryPath + '/test')) {
-                reject({ err: 'cloned repository already exist' })
+                try{
+                    git.pull('origin', 'master')
+                    resolve({ msg: 'update successfully' })
+                }catch(err){
+                    reject(err);
+                }
+                
             } else {
                 _self.getProperties().then(data => {
                     let remote = `https://${data.username}:${data.password}@${data.repository}`;

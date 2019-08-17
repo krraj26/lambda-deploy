@@ -8,6 +8,10 @@ const yaml = require("js-yaml");
 var util = require('../util/utility');
 
 router.get('/directories', function (req, res, next) {
+	util.pullCode()
+		.then(data => console.log(data))
+		.catch(err => res.status(400).json(err));
+		
 	util.listRepoDirectories()
 		.then(data => res.json(data))
 		.catch(err => res.status(400).json(err));
