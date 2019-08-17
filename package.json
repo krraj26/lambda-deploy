@@ -23,6 +23,7 @@
     "request": "^2.88.0",
     "simple-git": "^1.124.0",
     "write-data": "^1.0.2",
-    "write-yaml-file": "^3.0.1"
+    "write-yaml-file": "^3.0.1",
+    "properties": "^1.2.1"
   }
 }

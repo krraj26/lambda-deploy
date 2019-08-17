@@ -2,4 +2,6 @@ node_modules/
 .vscode
 package-lock.json
 public/static/
+public/commitDir/
+public/convertDIR/
 config/
