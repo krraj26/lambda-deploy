@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>{{title}}</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+    integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+</head>
+
+<body>
+  {{{body}}}
+</body>
+<script>
+  $('#selectOne').on('change', function (filePath) {
+
+    filePath = $('option:selected', $(this)).val();
+
+    $.ajax({
+      type: "POST",
+      url: 'http://localhost:3000/dir',
+      contentType: "application/json",
+      data: JSON.stringify({ filePath: filePath }),
+      success: function (body) {
+        // console.log(body[0].fileName);
+        var data = body;
+        for (i = 0; i < data.length; i++) {
+          console.log(data[i].fileName);
+        }
+      }
+    });
+  });
+
+  $('button').on('click', function() {
+    $.ajax({
+      type: 'POST',
+      url: '/deploy',
+      data: { ID: 'someid' },
+      success: function(resultData) {
+         alert(resultData);
+      }
+    });
+});
+
+
+</script>
+
+</html>
