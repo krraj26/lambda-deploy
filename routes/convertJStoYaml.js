@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 var writeData = require('write-data');
+var readline = require("readline");
 const commitDir = path.join(__dirname, '../public/commitDir');
 if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
@@ -9,11 +10,13 @@ const yaml = require("js-yaml");
 
 var fileConvertor = {
 
+
     tiggerPoint: function () {
 
         console.log("Directory is :" + commitDir);
 
         let array = [];
+        var npm;
         fs.readdir(commitDir, function (err, files) {
             if (err) {
                 console.log(err);
@@ -28,6 +31,22 @@ var fileConvertor = {
                 var stat = fs.statSync(filePath);
 
                 if (stat.isFile() && fileName.indexOf(".js") !== -1) {
+
+                    const readInterface = readline.createInterface({
+                        input: fs.createReadStream(commitDir + "/" + fileName),
+                        output: process.stdout,
+                        console: false
+                    });
+                    readInterface.on('line', function (line) {
+                        if (line.indexOf("require('") !== -1 && line.indexOf("')") !== -1) {
+                            var result = line.match(/\('(.*)'\)/, "");
+                            npm = result;
+                           // console.log(npm);
+                            for (var i = 0; i < npm.length; i++) {
+                                console.log("npm install " + npm[i]);
+                            }
+                        }
+                    });
 
                     array.push({ fileName: fileName });
 
@@ -46,7 +65,7 @@ var fileConvertor = {
                     var write = fs.createWriteStream(path.join(convertDir, newName));
                     read.pipe(write);
 
-                    const customer = {
+                    var templateYAML = {
                         "AWSTemplateFormatVersion": "2010-09-09",
                         "Transform": "AWS::Serverless-2016-10-31",
                         "Description": "Outputs the time",
@@ -70,7 +89,32 @@ var fileConvertor = {
                             }
                         }
                     }
-                    const jsonString = JSON.stringify(customer);
+
+                    var buildYaml = {
+                        "version": 0.2,
+                        "phases": {
+                            "install": {
+                                "runtime-versions": {
+                                    "nodejs": 10
+                                }
+                            },
+                            "build": {
+                                "commands": [
+                                    "npm install " + npm + "",
+                                    "export BUCKET=lambda-deployment-artifacts-123456789012",
+                                    "aws cloudformation package --template-file template.yaml --s3-bucket $BUCKET --output-template-file outputtemplate.yaml"
+                                ]
+                            }
+                        },
+                        "artifacts": {
+                            "type": "zip",
+                            "files": [
+                                "template.yaml",
+                                "outputtemplate.yaml"
+                            ]
+                        }
+                    }
+                    // const jsonString = JSON.stringify(templateYAML);
 
                     fs.readFile(convertDir + '/' + newName, function (err, data) {
                         if (err) { console.log(err); }
@@ -78,7 +122,7 @@ var fileConvertor = {
 
                             var js = JSON.stringify(data);
 
-                            writeData(convertDir + '/template.yaml', customer, function (err) {
+                            writeData(convertDir + '/template.yaml', templateYAML, function (err) {
                                 if (err) {
                                     console.log(err);
                                 } else {
@@ -92,9 +136,10 @@ var fileConvertor = {
                         if (err) { console.log(err); }
                         else {
 
-                            var js = JSON.stringify(data);
+                            // var js = JSON.stringify(data);
 
-                            writeData(convertDir + '/buildspec.yaml', customer, function (err) {
+
+                            writeData(convertDir + '/buildspec.yaml', buildYaml, function (err) {
                                 if (err) {
                                     console.log(err);
                                 } else {

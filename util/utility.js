@@ -31,7 +31,7 @@ customUtils = {
         return new Promise(function (resolve, reject) {
             if (fs.existsSync(directoryPath + '/test')) {
                 try{
-                    git.pull('origin', 'master')
+                    git.pull('origin', 'master');
                     resolve({ msg: 'update successfully' })
                 }catch(err){
                     reject(err);
