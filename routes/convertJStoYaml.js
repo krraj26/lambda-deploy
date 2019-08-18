@@ -11,7 +11,7 @@ const yaml = require("js-yaml");
 
 
 var fileConvertor = {
-
+    npmDependencies: [],
     tiggerPoint: function (dirName) {
         _self = this;
         let array = [];
@@ -31,18 +31,8 @@ var fileConvertor = {
 
                 if (stat.isFile() && fileName.indexOf(".js") !== -1) {
 
-                    const readInterface = readline.createInterface({
-                        input: fs.createReadStream(commitDir + "/" + fileName),
-                        console: false
-                    });
-                    readInterface.on('line', function (line) {
-                        // if (line.indexOf("require('") !== -1 && line.indexOf("')") !== -1) {
-                        //     var result = line.match(/\('(.*)'\)/, "");
-                        //     npm = result;
-                        //     for (var i = 0; i < npm.length; i++) {
-                        //         console.log("npm install " + npm[i]);
-                        //     }
-                        // }
+                    _self.findRequireFromJs(fileName, function (success) {
+                        console.log(success);
                     });
 
                     array.push({ fileName: fileName });
@@ -67,45 +57,58 @@ var fileConvertor = {
                             _self.readWriteFile('/template.yaml', data);
                         })
                         .catch(err => console.log(err));
-                    if(npmDependencies){
-                        _self.replaceContentBuildSpec(npmDependencies)
-                        .then(data => {
-                            _self.readWriteFile('/buildspec.yaml', data);
-                        })
-                        .catch(err => console.log(err));
+                    if (_self.npmDependencies) {
+                        _self.replaceContentBuildSpec(_self.npmDependencies)
+                            .then(data => {
+                                _self.readWriteFile('/buildspec.yaml', data);
+                            })
+                            .catch(err => console.log(err));
                     }
-                    
-                                        
+
+
                 }
             });
-            // console.log(array);
         });
-
     },
-    readWriteFile : function(writeTo, content){
+    readWriteFile: function (writeTo, content) {
         fs.writeFile(convertDir + writeTo, content, 'utf8', function (err) {
             if (err) reject(err);
             console.log(writeTo + ` : success`);
         });
     },
-    replaceContentTemplate : function(jsFileName, dirName){
-        return new Promise(function(resolve, reject){
-            fs.readFile(sampleDir  + '/template.yaml', 'utf8', function read(err, data){
+    replaceContentTemplate: function (jsFileName, dirName) {
+        return new Promise(function (resolve, reject) {
+            fs.readFile(sampleDir + '/template.yaml', 'utf8', function read(err, data) {
                 if (err) reject(err);
                 data = data.replace(/{{index}}/g, jsFileName);
                 data = data.replace(/{{dirName}}/g, dirName);
-                resolve(data);            
+                resolve(data);
             });
-        });        
+        });
     },
-    replaceContentBuildSpec : function(npmArray){
-        return new Promise(function(resolve, reject){
-            fs.readFile(sampleDir  + '/buildspec.yaml', 'utf8', function read(err, data){
+    replaceContentBuildSpec: function (npmArray) {
+        return new Promise(function (resolve, reject) {
+            fs.readFile(sampleDir + '/buildspec.yaml', 'utf8', function read(err, data) {
                 if (err) reject(err);
                 data = data.replace(/{{dependencies}}/g, npmArray);
-                resolve(data);            
+                resolve(data);
             });
-        });        
+        });
+    },
+    findRequireFromJs: function (fileName) {
+        _self = this;
+        _self.npmDependencies = [];
+        const readInterface = readline.createInterface({
+            input: fs.createReadStream(commitDir + "/" + fileName),
+            console: false
+        });
+        readInterface.on('line', function (line) {
+            if (line.indexOf("require('") !== -1 && line.indexOf("')") !== -1) {
+                let result = line.match(/'(.*)'/g);
+                _self.npmDependencies.push(result);
+            }
+
+        });
     }
 }
 
