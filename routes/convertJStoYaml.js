@@ -6,15 +6,14 @@ const commitDir = path.join(__dirname, '../public/commitDir');
 if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
 if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
+const sampleDir = path.join(__dirname, '../sample')
 const yaml = require("js-yaml");
+
 
 var fileConvertor = {
 
-
     tiggerPoint: function (dirName) {
-
-        console.log("Directory is :" + commitDir);
-
+        _self = this;
         let array = [];
         var npm;
         fs.readdir(commitDir, function (err, files) {
@@ -34,18 +33,16 @@ var fileConvertor = {
 
                     const readInterface = readline.createInterface({
                         input: fs.createReadStream(commitDir + "/" + fileName),
-                        output: process.stdout,
                         console: false
                     });
                     readInterface.on('line', function (line) {
-                        if (line.indexOf("require('") !== -1 && line.indexOf("')") !== -1) {
-                            var result = line.match(/\('(.*)'\)/, "");
-                            npm = result;
-                           // console.log(npm);
-                            for (var i = 0; i < npm.length; i++) {
-                                console.log("npm install " + npm[i]);
-                            }
-                        }
+                        // if (line.indexOf("require('") !== -1 && line.indexOf("')") !== -1) {
+                        //     var result = line.match(/\('(.*)'\)/, "");
+                        //     npm = result;
+                        //     for (var i = 0; i < npm.length; i++) {
+                        //         console.log("npm install " + npm[i]);
+                        //     }
+                        // }
                     });
 
                     array.push({ fileName: fileName });
@@ -65,101 +62,51 @@ var fileConvertor = {
                     var write = fs.createWriteStream(path.join(convertDir, newName));
                     read.pipe(write);
 
-                    var templateYAML = {
-                        "AWSTemplateFormatVersion": "2010-09-09",
-                        "Transform": "AWS::Serverless-2016-10-31",
-                        "Description": "Outputs the time",
-                        "Resources": {
-                            "TimeFunction": {
-                                "Type": "AWS::Serverless::Function",
-                                "Properties": {
-                                    "Handler": name + ".handler",
-                                    "Runtime": "nodejs10.x",
-                                    "CodeUri": "./",
-                                    "Events": {
-                                        "MyTimeApi": {
-                                            "Type": "Api",
-                                            "Properties": {
-                                                "Path": "/TimeResource",
-                                                "Method": "GET"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    _self.replaceContentTemplate(name, dirName)
+                        .then(data => {
+                            _self.readWriteFile('/template.yaml', data);
+                        })
+                        .catch(err => console.log(err));
+                    if(npmDependencies){
+                        _self.replaceContentBuildSpec(npmDependencies)
+                        .then(data => {
+                            _self.readWriteFile('/buildspec.yaml', data);
+                        })
+                        .catch(err => console.log(err));
                     }
-
-                    let templateYamlTemp = JSON.stringify(templateYAML);
-                    templateYamlTemp = templateYamlTemp.replace('\"TimeFunction\"', '"'+dirName+'"');
-                    templateYAML = JSON.parse(templateYamlTemp);
-                    console.log(JSON.stringify(templateYAML));
-
-                    var buildYaml = {
-                        "version": 0.2,
-                        "phases": {
-                            "install": {
-                                "runtime-versions": {
-                                    "nodejs": 10
-                                }
-                            },
-                            "build": {
-                                "commands": [
-                                    "npm install " + npm + "",
-                                    "export BUCKET=lambda-deployment-artifacts-123456789012",
-                                    "aws cloudformation package --template-file template.yaml --s3-bucket $BUCKET --output-template-file outputtemplate.yaml"
-                                ]
-                            }
-                        },
-                        "artifacts": {
-                            "type": "zip",
-                            "files": [
-                                "template.yaml",
-                                "outputtemplate.yaml"
-                            ]
-                        }
-                    }
-                    // const jsonString = JSON.stringify(templateYAML);
-
-                    fs.readFile(convertDir + '/' + newName, function (err, data) {
-                        if (err) { console.log(err); }
-                        else {
-
-                            var js = JSON.stringify(data);
-
-                            writeData(convertDir + '/template.yaml', templateYAML, function (err) {
-                                if (err) {
-                                    console.log(err);
-                                } else {
-                                    console.log("saved");
-                                }
-                            })
-                        }
-                    });
-
-                    fs.readFile(convertDir + '/' + newName, function (err, data) {
-                        if (err) { console.log(err); }
-                        else {
-
-                            // var js = JSON.stringify(data);
-
-
-                            writeData(convertDir + '/buildspec.yaml', buildYaml, function (err) {
-                                if (err) {
-                                    console.log(err);
-                                } else {
-                                    console.log("saved");
-                                }
-                            })
-                        }
-                    });
+                    
+                                        
                 }
             });
-            console.log(array);
+            // console.log(array);
         });
 
+    },
+    readWriteFile : function(writeTo, content){
+        fs.writeFile(convertDir + writeTo, content, 'utf8', function (err) {
+            if (err) reject(err);
+            console.log(writeTo + ` : success`);
+        });
+    },
+    replaceContentTemplate : function(jsFileName, dirName){
+        return new Promise(function(resolve, reject){
+            fs.readFile(sampleDir  + '/template.yaml', 'utf8', function read(err, data){
+                if (err) reject(err);
+                data = data.replace(/{{index}}/g, jsFileName);
+                data = data.replace(/{{dirName}}/g, dirName);
+                resolve(data);            
+            });
+        });        
+    },
+    replaceContentBuildSpec : function(npmArray){
+        return new Promise(function(resolve, reject){
+            fs.readFile(sampleDir  + '/buildspec.yaml', 'utf8', function read(err, data){
+                if (err) reject(err);
+                data = data.replace(/{{dependencies}}/g, npmArray);
+                resolve(data);            
+            });
+        });        
     }
-
 }
 
 module.exports = fileConvertor;
