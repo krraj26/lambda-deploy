@@ -11,7 +11,7 @@ const yaml = require("js-yaml");
 var fileConvertor = {
 
 
-    tiggerPoint: function () {
+    tiggerPoint: function (dirName) {
 
         console.log("Directory is :" + commitDir);
 
@@ -89,6 +89,11 @@ var fileConvertor = {
                             }
                         }
                     }
+
+                    let templateYamlTemp = JSON.stringify(templateYAML);
+                    templateYamlTemp = templateYamlTemp.replace('\"TimeFunction\"', '"'+dirName+'"');
+                    templateYAML = JSON.parse(templateYamlTemp);
+                    console.log(JSON.stringify(templateYAML));
 
                     var buildYaml = {
                         "version": 0.2,

@@ -27,10 +27,15 @@ router.post('/files', function (req, res, next) {
 	
 });
 
-router.get('/execute', function (req, res, next) {
-	util.convertJStoYaml()
+router.get('/execute/:dirName', function (req, res, next) {
+	if(req.params && req.params.dirName){
+		util.convertJStoYaml(req.params.dirName)
 		.then(data => res.json(data))
 		.catch(err => res.status(400).json(err));
+	}else{
+		res.status(400).json("path variable missing!");
+	}
+	
 
 });
 
