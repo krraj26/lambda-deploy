@@ -19,15 +19,21 @@
 	<title>AWS Test</title>
 	<div class="container" style="text-align:center">
 		<div class="row">
-		  <div class="col-md">
-			<div  class="form-group">
-				<select  class="browser-default custom-select" id="selectOne" >        
-				</select>
-			</div
-			<div class="form-group">
-				<button  class="btn btn-primary" id="myButton" disabled=disabled>Deploy</select>
+		  	<div class="col-sm">
+				<div  class="form-group">
+					<select  class="browser-default custom-select" id="selectOne" ></select>
+				</div>
 			</div>
-		  </div>
+		  	<div class="col-sm">
+				<div class="form-group">
+					<input class="form-control" id="selectedDir" value="" disabled/>        				
+				</div>
+			</div>
+		  	<div class="col-sm">
+				<div class="form-group">
+					<button  class="btn btn-primary" id="myButton" disabled=disabled>Deploy</select>
+				</div>
+			</div>
 		</div>
 	  </div>
 </body>
@@ -51,6 +57,7 @@ $(document).ready(function(){
 
 
     $('#selectOne').on('change', function (filePath) {
+		$('#selectedDir').val($('#selectOne option:selected').text());
 		filePath = $('option:selected', $(this)).val();
 		$.ajax({
 			type: "POST",
@@ -68,18 +75,21 @@ $(document).ready(function(){
 	});
 
 	$('#myButton').on('click', function(){
+		let dirName = $('#selectedDir').val();
 		$('#myButton').prop("disabled", true);			
+		
 		$.ajax({
-		type: "GET",
-		url: 'http://localhost:3000/api/v1/execute',
-		contentType: "application/json",      
-		success: function (data) {
-			console.log(data)
-		},
-		error : function(err){
-			alert("unable to fetch data");
-		}
+			type: "GET",
+			url: 'http://localhost:3000/api/v1/execute/'+dirName,
+			contentType: "application/json",      
+			success: function (data) {
+				console.log(data)
+			},
+			error : function(err){
+				alert("unable to fetch data");
+			}
 		});
+		
 	});
 
 });

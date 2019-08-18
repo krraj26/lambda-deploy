@@ -113,12 +113,12 @@ customUtils = {
             });
         });
     },
-    convertJStoYaml : function(){
+    convertJStoYaml : function(dirName){
         let _self = this;
         return new Promise(function(resolve, reject){
             try{
                 _self.cleanDirectory(convertDir);
-                jsToYaml.tiggerPoint();
+                jsToYaml.tiggerPoint(dirName);
                 resolve("success");
             }catch(err){
                 reject(err);
