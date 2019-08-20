@@ -29,4 +29,13 @@ app.use(function(err, req, res, next) {
   res.json(err);
 });
 
+function ignoreFavicon(req, res, next) {
+  if (req.originalUrl === '/favicon.ico') {
+    res.status(204).json({nope: true});
+  } else {
+    next();
+  }
+}
+app.use(ignoreFavicon);
+
 module.exports = app;

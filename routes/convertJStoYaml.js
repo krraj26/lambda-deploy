@@ -7,7 +7,7 @@ if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
 if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
 const sampleDir = path.join(__dirname, '../sample');
-const repoDir = path.join(__dirname, '../public/Test-Repo');
+const repoDir = path.join(__dirname, '../public/lambda-Repo-PST');
 const testDir = path.join(__dirname, '../public/test');
 const yaml = require("js-yaml");
 
@@ -67,17 +67,26 @@ var fileConvertor = {
                             })
                             .catch(err => console.log(err));
                     }
-                    _self.createDirForAWS(dirName, function (success) {
-                        console.log(success);
-
-                    });
-                    _self.copyFilesInRepoDir(dirName, function (success) {
-                        console.log(success);
-                    });
+                    
 
                 }
+                //  _self.createDirForAWS(dirName, function (success) {
+                //         console.log(success);
+
+                //     });
+                // _self.copyFilesInRepoDir(dirName, function (success) {
+                //     console.log(success);
+                // });
+                
+
+            });
+            _self.moveFilesFromConverDIR(dirName, function (success) {
+                console.log(success);
             });
         });
+
+       
+
     },
     readWriteFile: function (writeTo, content) {
         fs.writeFile(convertDir + writeTo, content, 'utf8', function (err) {
@@ -128,35 +137,71 @@ var fileConvertor = {
         });
     },
 
-    copyFilesInRepoDir: function (dirName) {
-        var repoArray = [];
+    moveFilesFromConverDIR: function (fileName) {
         fs.readdir(convertDir, function (err, files) {
-            if (err) {
-                console.log(err)
-            }
-            files.forEach(function (fileName) {
-                //console.log(fileName);
 
-                var filePath = path.join(convertDir, fileName);
-                console.log("conver path:" + filePath);
+            if (err) {
+                return console.log('Unable to scan directory: ' + err);
+            }
+
+            console.log("files : "+files);
+
+                var filePath = path.join(convertDir);
+                console.log("file path" +filePath);
 
                 var stat = fs.statSync(filePath);
 
-                if (stat.isFile() && fileName.indexOf(".")!== -1) {
-                    repoArray.push({ fileName: fileName, filePath: filePath });
-
-                    var dotIndex = fileName.lastIndexOf(".");
-                    var name = fileName.slice(0, dotIndex)
-                    var newName = name + path.extname(fileName);
-
-                    var read = fs.createReadStream(path.join(filePath));
-                    var write = fs.createWriteStream(path.join(repoDir + "/" + dirName, newName));
-                    read.pipe(write);
+            if(stat.isFile() && fileName(".")!==-1)
+            {
+                for (var i = files.length - 1; i >= 0; i--) {
+                    var file = files[i];
+                    console.log("files are:" + file);
+                    fs.rename(convertDir + "/" + file, repoDir + "/" + file, function (err) {
+                        if (err) throw err;
+                        console.log('Move complete.');
+                    });
                 }
-            })
+            }
 
         });
     }
+
+    // copyFilesInRepoDir: function (dirName) {
+    //     var repoArray = [];
+    //     fs.readdir(convertDir, function (err, files) {
+    //         if (err) {
+    //             console.log(err)
+    //         }
+    //         files.forEach(function (fileName) {
+    //             //console.log(fileName);
+
+    //             var filePath = path.join(convertDir, fileName);
+    //             console.log("conver path:" + filePath);
+
+    //             var stat = fs.statSync(filePath);
+
+    //             if (stat.isFile() && fileName.indexOf(".")!== -1) {
+    //                 repoArray.push({ fileName: fileName, filePath: filePath });
+
+    //                 var dotIndex = fileName.lastIndexOf(".");
+    //                 var name = fileName.slice(0, dotIndex)
+    //                 var newName = name + path.extname(fileName);
+
+    //                 var read = fs.createReadStream(path.join(filePath));
+    //                 var write = fs.createWriteStream(path.join(repoDir + "/" + dirName, newName));
+    //                 read.pipe(write);
+    //             }
+    //         })
+
+    //     });
+    // },
+
+    // codePushToAws : function()
+    // {
+
+    // }
+
+
 
 }
 
