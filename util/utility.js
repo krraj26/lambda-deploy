@@ -20,7 +20,7 @@ customUtils = {
     },
     getProperties: function () {
         return new Promise(function (resolve, reject) {
-            properties.parse("./config/default.properties", { path: true }, function (error, prop) {
+            properties.parse("./config/git.properties", { path: true }, function (error, prop) {
                 if (error) reject(error);
                 resolve(prop);
             });
@@ -128,5 +128,7 @@ customUtils = {
         
     }
 }
+
+
 
 module.exports = customUtils;

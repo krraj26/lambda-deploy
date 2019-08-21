@@ -1,7 +1,7 @@
 const git = require('simple-git');
 const path = require('path');
-const dir = path.join(__dirname, "static/Test-Repo");
-const config = path.join(__dirname, "config/config.json");
+const dir = path.join(__dirname, "../public/static/lambda-repo-pst");
+const config = path.join(__dirname, "config/aws.properties");
 const USER = config.USER;
 const PASS = config.PASS;
 const REPO = config.REPO;
