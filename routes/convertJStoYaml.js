@@ -138,7 +138,7 @@ var fileConvertor = {
     //     });
     // },
 
-    moveFilesFromConverDIR: function () {
+    moveFilesFromConverDIR: function (dirName) {
         fs.readdir(convertDir, function (err, files) {
             if (err) {
                 console.error("Could not list the directory.", err);
