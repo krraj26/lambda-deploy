@@ -9,6 +9,9 @@ if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
 const sampleDir = path.join(__dirname, '../sample');
 if (!fs.existsSync(sampleDir)) fs.mkdirSync(sampleDir, { recursive: true });
 const git = require('simple-git');
+var ncp = require('ncp').ncp;
+ncp.limit = 16;
+
 // const config = path.join(__dirname, "config/aws.properties");
 
 //console.log(repoDir);
@@ -101,7 +104,7 @@ var fileConvertor = {
         return new Promise(function (resolve, reject) {
             fs.readFile(sampleDir + '/buildspec.yaml', 'utf8', function read(err, data) {
                 if (err) reject(err);
-                data = data.replace(/{{dependencies}}/g, npmArray);
+                // data = data.replace(/{{dependencies}}/g, npmArray);
                 resolve(data);
             });
         });
@@ -133,13 +136,14 @@ var fileConvertor = {
     moveAllFiles: function () {
 
         const lambdaDir = path.join(__dirname, '../public/static/lambda-repo-pst')
-        if (fs.existsSync(lambdaDir)){
 
-            var source = fs.createReadStream(convertDir);
-            var dest = fs.createWriteStream(lambdaDir);
-            source.pipe(dest);
-            source.on('end', function() { console.log('copied successfully!') });
-            source.on('error', function(err) { console.log('failed to copied !!') });
+        if (fs.existsSync(lambdaDir)){
+            ncp(convertDir, lambdaDir, function (err) {
+                if (err) {
+                  return console.error(err);
+                }
+                console.log('done!');
+            });            
         }else{
             console.log('lambda directory not found');
         }
