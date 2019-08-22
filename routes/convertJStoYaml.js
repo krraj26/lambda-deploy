@@ -7,10 +7,9 @@ if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
 if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
 const sampleDir = path.join(__dirname, '../sample');
-const repoDir = path.join(__dirname, '../public/static/lambda-repo-pst');
-//const testDir = path.join(__dirname, '../public/test');
+if (!fs.existsSync(sampleDir)) fs.mkdirSync(sampleDir, { recursive: true });
 const git = require('simple-git');
-const config = path.join(__dirname, "config/aws.properties");
+// const config = path.join(__dirname, "config/aws.properties");
 
 //console.log(repoDir);
 
@@ -60,40 +59,33 @@ var fileConvertor = {
 
                     var write = fs.createWriteStream(path.join(convertDir, newName));
                     read.pipe(write);
+
                     _self.replaceContentTemplate(name, dirName)
                         .then(data => {
-                            _self.readWriteFile('/template.yaml', data);
-                            _self.moveFilesFromConverDIR(dirName);
+                            return _self.readWriteFile('/template.yaml', data);                            
+                        }).then(data => {
+                            _self.replaceContentBuildSpec(name, dirName)
+                                .then(data => {
+                                _self.readWriteFile('/buildspec.yaml', data);
+                                _self.moveAllFiles();                           
+                            }).catch(err => console.log(err));
                         })
                         .catch(err => console.log(err));
-
-                    _self.replaceContentBuildSpec(name, dirName)
-                        .then(data => {
-                            _self.readWriteFile('/buildspec.yaml', data);
-                            _self.moveFilesFromConverDIR(dirName);
-                        })
-                        .catch(err => console.log(err));
+                    
                 }
-            });
-
-            _self.moveFilesFromConverDIR(dirName,function (success) {
-                console.log(success);
-            });
-            // _self.codeCommitToAWS(dirName, function(success){
-            //     console.log(success);
-            // })
+            });            
         });
-
-
-
     },
 
 
     readWriteFile: function (writeTo, content) {
-        fs.writeFile(convertDir + writeTo, content, 'utf8', function (err) {
-            if (err) reject(err);
-            console.log(writeTo + ` : success`);
+        return new Promise((resolve, reject) => {
+            fs.writeFile(convertDir + writeTo, content, 'utf8', function (err) {
+                if (err) reject(err);
+                resolve("success");
+            });
         });
+        
     },
     replaceContentTemplate: function (jsFileName, dirName) {
         return new Promise(function (resolve, reject) {
@@ -109,7 +101,7 @@ var fileConvertor = {
         return new Promise(function (resolve, reject) {
             fs.readFile(sampleDir + '/buildspec.yaml', 'utf8', function read(err, data) {
                 if (err) reject(err);
-                // data = data.replace(/{{dependencies}}/g, npmArray);
+                data = data.replace(/{{dependencies}}/g, npmArray);
                 resolve(data);
             });
         });
@@ -138,42 +130,22 @@ var fileConvertor = {
     //     });
     // },
 
-    moveFilesFromConverDIR: function (dirName) {
-        fs.readdir(convertDir, function (err, files) {
-            if (err) {
-                console.error("Could not list the directory.", err);
-                process.exit(1);
-            }
+    moveAllFiles: function () {
 
-            files.forEach(function (file, index) {
-                // Make one pass and make the file complete
-                var fromPath = path.join(convertDir, file);
-                console.log("formpath" + fromPath);
-                var toPath = path.join(repoDir, file);
+        const lambdaDir = path.join(__dirname, '../public/static/lambda-repo-pst')
+        if (fs.existsSync(lambdaDir)){
 
-                fs.stat(fromPath, function (error, stat) {
-                    if (error) {
-                        console.error("Error stating file.", error);
-                        return;
-                    }
+            var source = fs.createReadStream(convertDir);
+            var dest = fs.createWriteStream(lambdaDir);
+            source.pipe(dest);
+            source.on('end', function() { console.log('copied successfully!') });
+            source.on('error', function(err) { console.log('failed to copied !!') });
+        }else{
+            console.log('lambda directory not found');
+        }
 
-                    if (stat.isFile())
-                        console.log("'%s' is a file.", fromPath);
-                    else if (stat.isDirectory())
-                        console.log("'%s' is a directory.", fromPath);
-
-                    fs.rename(fromPath, toPath, function (error) {
-                        if (error) {
-                            console.error("File moving error.", error);
-                        } else {
-                            console.log("Moved file '%s' to '%s'.", fromPath, toPath);
-                        }
-                    });
-                });
-            });
-        });
+        
     },
-
     codeCommitToAWS: function (dirName) {
         return new Promise(function (resolve, reject) {
             try {

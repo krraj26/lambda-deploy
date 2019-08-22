@@ -8,7 +8,6 @@ const commitDir = path.join(__dirname, '../public/commitDir');
 if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
 if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
-
 var jsToYaml = require('../routes/convertJStoYaml')
 
 customUtils = {
