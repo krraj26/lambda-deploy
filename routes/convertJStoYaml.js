@@ -9,6 +9,8 @@ if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
 const sampleDir = path.join(__dirname, '../sample');
 if (!fs.existsSync(sampleDir)) fs.mkdirSync(sampleDir, { recursive: true });
 const git = require('simple-git');
+const config = require("../config/git.json");
+const lambdaDir = path.join(__dirname, '../public/static/lambda-repo-pst');
 var ncp = require('ncp').ncp;
 ncp.limit = 16;
 
@@ -65,19 +67,23 @@ var fileConvertor = {
 
                     _self.replaceContentTemplate(name, dirName)
                         .then(data => {
-                            return _self.readWriteFile('/template.yaml', data);                            
+                            return _self.readWriteFile('/template.yaml', data);
                         }).then(data => {
                             _self.replaceContentBuildSpec(name, dirName)
                                 .then(data => {
-                                _self.readWriteFile('/buildspec.yaml', data);
-                                _self.moveAllFiles();                           
-                            }).catch(err => console.log(err));
+                                    _self.readWriteFile('/buildspec.yaml', data);
+                                    _self.moveAllFiles();
+
+                                })
+                                .catch(err => console.log(err));
                         })
                         .catch(err => console.log(err));
-                    
                 }
-            });            
+            });
+            _self.codeCommitToAWS();
+
         });
+
     },
 
 
@@ -88,7 +94,7 @@ var fileConvertor = {
                 resolve("success");
             });
         });
-        
+
     },
     replaceContentTemplate: function (jsFileName, dirName) {
         return new Promise(function (resolve, reject) {
@@ -135,38 +141,33 @@ var fileConvertor = {
 
     moveAllFiles: function () {
 
-        const lambdaDir = path.join(__dirname, '../public/static/lambda-repo-pst')
-
-        if (fs.existsSync(lambdaDir)){
+        if (fs.existsSync(lambdaDir)) {
             ncp(convertDir, lambdaDir, function (err) {
                 if (err) {
-                  return console.error(err);
+                    return console.error(err);
                 }
                 console.log('done!');
-            });            
-        }else{
+            });
+        } else {
             console.log('lambda directory not found');
         }
-
-        
     },
-    codeCommitToAWS: function (dirName) {
-        return new Promise(function (resolve, reject) {
-            try {
-                const USER = config.username;
-                const PASS = config.password;
-                const REPO = config.repository;
-                const gitHubUrl = `https://${USER}:${PASS}@${REPO}`;
+    codeCommitToAWS: function () {
 
-                git(repoDir).add('./*')
-                    .commit("first commit!")
-                    .push(['-u', 'origin', 'master'], () => resolve('done'));
-            }
-            catch (err) {
-                reject(err);
-            }
+        try {
+            const USER = config.USER;
+            const PASS = config.PASS;
+            const REPO = config.REPO;
+            const gitHubUrl = `https://${USER}:${PASS}@${REPO}`;
+            //console.log("github url "+gitHubUrl);
 
-        });
+            git(lambdaDir).add("./*")
+                .commit("first commit!")
+                .push(['-u', 'origin', 'master'], () => console.log("files push to aws"));
+        }
+        catch (err) {
+            console.log(err);
+        }
     }
 }
 

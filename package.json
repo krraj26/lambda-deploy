@@ -12,6 +12,7 @@
     "debug": "~2.6.9",
     "express": "~4.16.1",
     "fs": "0.0.1-security",
+    "fs-extra": "^8.1.0",
     "handlebars": "^4.1.2",
     "hbs": "~4.0.4",
     "http-errors": "~1.6.3",
