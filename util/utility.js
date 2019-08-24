@@ -8,7 +8,8 @@ const commitDir = path.join(__dirname, '../public/commitDir');
 if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
 if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
-var jsToYaml = require('../routes/convertJStoYaml')
+var jsToYaml = require('../routes/convertJStoYaml');
+var aws = require("../aws/index");
 
 customUtils = {
 
@@ -119,12 +120,12 @@ customUtils = {
             try{
                 _self.cleanDirectory(convertDir);
                 jsToYaml.tiggerPoint(dirName);
+              //  aws.codeCommitToWAS();
                 resolve("success");
             }catch(err){
                 reject(err);
             }
-        });
-        
+        }); 
     }
 }
 
