@@ -22,7 +22,7 @@ app.use('/', function(req, res, next){
     require('simple-git')(commitDir+ '/test')
      .add('./*')
      .commit("first commit!")
-    //  .addRemote('origin', 'https:praveshasiwal:pravesh.technolabs@//github.com/praveshasiwal/test.git')
+    //  .addRemote('origin', 'https:username:password@//github.com/praveshasiwal/test.git')
      .push(['-u', 'origin', 'master'], () => console.log('done'));
 
     res.json({msg : "Hello World!"});
