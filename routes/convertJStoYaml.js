@@ -7,7 +7,7 @@ if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
 if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
 const sampleDir = path.join(__dirname, '../sample');
-if (!fs.existsSync(sampleDir)) fs.mkdirSync(sampleDir, { recursive: true });
+if (!fs.existsSync(sampleDir)) fsmkdirSync(sampleDir, { recursive: true });
 const git = require('simple-git');
 const config = require("../config/aws.json");
 var lambdaDir = path.join(__dirname, '../public/static/lambda-repo-pst');
