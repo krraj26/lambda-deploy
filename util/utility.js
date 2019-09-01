@@ -9,7 +9,7 @@ if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
 const convertDir = path.join(__dirname, '../public/convertDIR')
 if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
 var jsToYaml = require('../routes/convertJStoYaml');
-var aws = require("../aws/index");
+//var aws = require("../aws/index");
 
 customUtils = {
 
@@ -32,8 +32,12 @@ customUtils = {
             if (fs.existsSync(directoryPath + '/test')) {
                 try{
                     require('simple-git/promise')(directoryPath + '/test')
-                        .pull('origin', 'master');
-                    resolve({ msg: 'update successfully' })
+                    .pull((err, update) => {
+                        if(update && update.summary.changes) {
+                           require('child_process').exec('npm restart');
+                        }
+                     });
+                    resolve({ msg: 'update successfully' });
                 }catch(err){
                     reject(err);
                 }
@@ -45,7 +49,7 @@ customUtils = {
                         .clone(remote)
                         .then(() => resolve({ "msg": "clone successfully" }));
                 }).catch(err => {
-                    _self.myConsole(err);
+                    _self.myConsole("Please check, Something is wrong " +err);
                     reject(err);
                 });
             }
@@ -120,7 +124,6 @@ customUtils = {
             try{
                 _self.cleanDirectory(convertDir);
                 jsToYaml.tiggerPoint(dirName);
-              //  aws.codeCommitToWAS();
                 resolve("success");
             }catch(err){
                 reject(err);
@@ -128,7 +131,5 @@ customUtils = {
         }); 
     }
 }
-
-
 
 module.exports = customUtils;

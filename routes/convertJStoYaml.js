@@ -11,43 +11,49 @@ if (!fs.existsSync(sampleDir)) fs.mkdirSync(sampleDir, { recursive: true });
 const git = require('simple-git');
 const config = require("../config/aws.json");
 var lambdaDir = path.join(__dirname, '../public/static/lambda-repo-pst');
-var ncp = require('ncp').ncp;
-ncp.limit = 16;
-var del = require('del');
-
-// const config = path.join(__dirname, "config/aws.properties");
-
-//console.log(repoDir);
+var awsCli = require('aws-cli-js');
 
 var fileConvertor = {
     npmDependencies: [],
+
     tiggerPoint: function (dirName) {
         _self = this;
-        let array = [];
         var npm;
 
+        _self.copyandConvert();
+        _self.replaceContentTemplate(dirName)
+            .then(data => {
+                return _self.readWriteFile('/template.yaml', data);
+                // console.log(data)
+            }).then(data => {
+                _self.replaceContentBuildSpec(dirName)
+                    .then(data => {
+                        return _self.readWriteFile('/buildspec.yaml', data);
+                        // console.log(data)
+                    }).then(data => {
+                        _self.asyncAwaitCode();
+                    })
+
+                    .catch(err => {
+                        console.log(err);
+                    });
+
+            });
+
+    },
+
+    copyandConvert: function () {
         fs.readdir(commitDir, function (err, files) {
             if (err) {
                 console.log(err);
             }
-
+            let array = [];
             files.forEach(function (fileName) {
-                console.log(fileName);
 
                 var filePath = path.join(commitDir, fileName);
-                console.log(filePath);
-
                 var stat = fs.statSync(filePath);
 
-
-
                 if (stat.isFile() && fileName.indexOf(".js") !== -1) {
-
-                    _self.findRequireFromJs(fileName, function (success) {
-                        console.log(success);
-                    });
-
-
 
                     array.push({ fileName: fileName });
 
@@ -60,150 +66,152 @@ var fileConvertor = {
                         if (err) {
                             console.error(err)
                         }
-                        console.log("File removed successfully :" + fileName);
+                        console.log("File removed from convertDIR successfully :" + fileName);
                     });
                     var write = fs.createWriteStream(path.join(convertDir, newName));
                     read.pipe(write);
+                }
+
+            });
+
+        });
+    },
+
+    moveFiles: function (oldPath, newPath) {
+        return new Promise((resolve, reject) => {
+            fs.readdir(convertDir, function (err, files) {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    console.log(files);
+
+                    files.forEach((filename) => {
+                        var filepath = path.join(convertDir, filename);
+                        var stat = fs.statSync(filepath);
+
+                        if (stat.isFile() && filename.indexOf(".") !== -1) {
+                            fs.rename(convertDir + "/" + filename, lambdaDir + "/" + filename, function (err) {
+                                resolve('Move complete.');
+                            });
+                        }
+
+                    });
 
                 }
 
-                _self.replaceContentTemplate(name, dirName)
-                        .then(data => {
-                            return _self.readWriteFile('/template.yaml', data);
-                        }).then(data => {
-                            _self.replaceContentBuildSpec(name, dirName)
-                                .then(data => {
-                                    _self.readWriteFile('/buildspec.yaml', data);
-                                    _self.moveFiles(convertDir+"/"+fileName, lambdaDir);                                   
-                                })
-                                .catch(err => console.log(err)) ;
-                        })
-                        .catch(err => console.log(err));
-                        
             });
-            
-            
-        });      
-       // _self.codeCommitToAWS();
+        })
     },
-
-    moveFiles: function(oldPath, newPath){
-                 fs.readdir(convertDir, function(err, files)
-                 {
-                     if(err)
-                     throw err;
-                     console.log(files);
-                     for (var i = files.length - 1; i >= 0; i--) {
-                        var file = files[i];
-                        fs.rename(convertDir +"/"+ file, lambdaDir +"/"+ file, function(err) {
-                            
-                            console.log('Move complete.');
-                        });
-                    }
-                 });
-    },
-
-
 
     readWriteFile: function (writeTo, content) {
         return new Promise((resolve, reject) => {
             fs.writeFile(convertDir + writeTo, content, 'utf8', function (err) {
-                if (err) reject(err);
-                resolve("success");
+                if (err) { reject(err); }
+                else {
+                    resolve("success");
+                }
             });
         });
-
     },
-    replaceContentTemplate: function (jsFileName, dirName) {
+    replaceContentTemplate: function (dirName) {
         return new Promise(function (resolve, reject) {
             fs.readFile(sampleDir + '/template.yaml', 'utf8', function read(err, data) {
-                if (err) reject(err);
-                data = data.replace(/{{index}}/g, jsFileName);
-                data = data.replace(/{{dirName}}/g, dirName);
-                resolve(data);
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    data = data.replace(/{{dirName}}/g, dirName);
+                    resolve(data);
+                }
+
             });
         });
     },
-    replaceContentBuildSpec: function (fileName, dirName) {
+    replaceContentBuildSpec: function (dirName) {
         return new Promise(function (resolve, reject) {
-            fs.readFile(sampleDir + '/buildspec.yaml', 'utf8' ,function read(err, data) {
-                if (err) reject(err);
-                // data = data.replace(/{{dependencies}}/g, npmArray);
-                resolve(data);
+            fs.readFile(sampleDir + '/buildspec.yaml', 'utf8', function read(err, data) {
+                if (err) { reject(err); }
+                else {
+                    resolve(data);
+                }
             });
         });
     },
-    findRequireFromJs: function (fileName) {
-        _self = this;
-        _self.npmDependencies = [];
-        const readInterface = readline.createInterface({
-            input: fs.createReadStream(commitDir + "/" + fileName),
-            console: false
-        });
-        readInterface.on('line', function (line) {
-            if (line.indexOf("require('") !== -1 && line.indexOf("')") !== -1) {
-                let result = line.match(/'(.*)'/g);
-                _self.npmDependencies.push(result);
-            }
 
+    codeCommitToAWS: function () {
+        return new Promise((resolve, reject) => {
+            const USER = config.USER;
+            const PASS = config.PASS;
+            const REPO = config.REPO;
+            const gitHubUrl = `https://${USER}:${PASS}@${REPO}`;
+
+            try {
+                git(lambdaDir).add('./*')
+                    .commit("first commit!")
+                    .push(['-u', 'origin', 'master'],
+                        () => {
+                            console.log("files pushed to AWS repository successfully");
+                            resolve(true);
+                        });
+
+            } catch (error) {
+                console.log("Please check your network" + error);
+                reject(err);
+            }
         });
     },
 
-    // createDirForAWS: function (dirName) {
-    //     fs.readdir(repoDir, function (err, data) {
-    //         if (err)
-    //             throw err;
-    //         fs.mkdirSync(repoDir + "/" + dirName, { recursive: true });
-    //     });
-    // },
+    deleteFiles: function () {
+        return new Promise((resolve, reject) => {
+            fs.readdir(lambdaDir, function (err, files) {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    files.forEach((filename) => {
+                        var filePath = path.join(lambdaDir, filename);
+                        var stat = fs.statSync(filePath);
+                        if (stat.isFile() && filename.indexOf(".git") == -1) {
+                            fs.unlink(lambdaDir + "/" + filename, function (err) {
+                                if (err) {
+                                    reject(err);
+                                }
+                                else {
+                                    console.log("file deleted from lambdaDIR succesfully " + filename);
+                                    resolve(true);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        });
+    },
 
-    deleteAllFiles:function(fileName){
-        fs.unlink(convertDir+"/"+fileName, function(err){
-            if(err)
-            throw err;
-            console.log("files are deleted " +fileName);
+    pipeline: function () {
+        return new Promise((resolve, reject) => {
+            var Options = awsCli.Options;
+            var Aws = awsCli.Aws
+            var Key = require("../config/pipeline.json");
+
+            var options = new Options(
+                AWS_ACCESS_KEY_ID = Key.aws_access_key_id,
+                AWS_SECRET_ACCESS_KEY = Key.aws_secret_access_key
+            );
+            var aws = new Aws(options);
+            aws.command('codepipeline start-pipeline-execution --name pipeline-pipeline').then(function (data) {
+                console.log('AWS Script run Successfully');
+            }).catch(err => { console.log("error" +err) });
+            resolve(true);
         })
     },
-
-    // moveAllFiles: function () {
-
-    //     if (fs.existsSync(lambdaDir)) {
-    //         ncp(convertDir, lambdaDir, function (err) {
-    //             if (err) {
-    //                 return console.error(err);
-    //             }
-    //             console.log('done!');
-    //         });
-    //     } else {
-    //         console.log('lambda directory not found');
-    //     }
-    // },
-    codeCommitToAWS: function () {
-        try {
-            if (fs.existsSync(lambdaDir)) {
-                return new Promise(function (resolve, reject) {
-                    try {
-                        const USER = config.USER;
-                        const PASS = config.PASS;
-                        const REPO = config.REPO;
-                        const gitHubUrl = `https://${USER}:${PASS}@${REPO}`;
-                        
-                        
-                        git(lambdaDir).add('./*')
-                            .commit("first commit!")
-                            .push(['-u', 'origin', 'master'], () => console.log("files push to aws"));
-                    }
-                    catch (err) {
-                        reject(err);
-                    }
-              
-                });
-            }
-            
-          } catch(err) {
-            console.error(err)
-          }
-        
-}}
-
+    asyncAwaitCode: async function () {
+        const mf = await _self.moveFiles();
+        const cca = await _self.codeCommitToAWS();
+        const ld = await _self.deleteFiles();
+        const pl = await _self.pipeline();
+        //console.log(`${a} ${b} ${c}`);
+    }
+}
 module.exports = fileConvertor;

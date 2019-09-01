@@ -45,13 +45,13 @@ $(document).ready(function(){
       url: 'http://localhost:3000/api/v1/directories',
       contentType: "application/json",      
       success: function (data) {
-		  console.log(data)
+		 // console.log(data)
 		  $.each(data, function(index, value){
 			  $('#selectOne').append('<option value='+value.filePath+'>'+value.fileName+'</option>');
 		  });		
       },
 	  error : function(err){
-		  alert("unable to fetch data");
+		 // alert("unable to fetch data");
 	  }
     });
 
@@ -86,7 +86,7 @@ $(document).ready(function(){
 				console.log(data)
 			},
 			error : function(err){
-				alert("unable to fetch data");
+				//alert("unable to fetch data");
 			}
 		});
 		

@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: Outputs the time
 Resources:
-  {{dirName}}:
+ {{dirName}}:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: index.handler
@@ -12,5 +12,5 @@ Resources:
         MyTimeApi:
           Type: Api
           Properties:
-            Path: /{{dirName}}
+            Path: /{{dirName}}:
             Method: GET
