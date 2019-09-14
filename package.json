@@ -6,18 +6,24 @@
     "start": "nodemon ./bin/www"
   },
   "dependencies": {
-    "aws-sdk": "^2.507.0",
+    "aws-cli-js": "^2.0.6",
+    "aws-sdk": "^2.523.0",
     "child_process": "^1.0.2",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "del": "^5.1.0",
     "express": "~4.16.1",
+    "express-flash-notification": "^0.5.0",
+    "forever": "^1.0.0",
+    "forever-monitor": "^1.7.1",
     "fs": "0.0.1-security",
     "fs-extra": "^8.1.0",
     "handlebars": "^4.1.2",
     "hbs": "~4.0.4",
     "http-errors": "~1.6.3",
+    "jQuery": "^1.7.4",
     "js-yaml": "^3.13.1",
+    "kill-port": "^1.5.1",
     "mkdirp": "^0.5.1",
     "morgan": "~1.9.1",
     "move-file": "^1.2.0",
@@ -32,5 +38,10 @@
     "update": "^0.7.4",
     "write-data": "^1.0.2",
     "write-yaml-file": "^3.0.1"
+  },
+  "devDependencies": {
+    "curl": "^0.1.4",
+    "jquery": "^3.4.1",
+    "jsdom": "^15.1.1"
   }
 }
