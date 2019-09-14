@@ -4,11 +4,9 @@ var fs = require('fs');
 const directoryPath = path.join(__dirname, '../public/static');
 if (!fs.existsSync(directoryPath)) fs.mkdirSync(directoryPath, { recursive: true });
 const git = require('simple-git/promise')(directoryPath);
-const commitDir = path.join(__dirname, '../public/commitDir');
-if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
-const convertDir = path.join(__dirname, '../public/convertDIR')
-if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
 var jsToYaml = require('../routes/convertJStoYaml');
+const config = require("../config/aws.json");
+var lambdaDir = path.join(__dirname, '../public/static/lambda-pipeline-repo-pst');
 //var aws = require("../aws/index");
 
 customUtils = {
@@ -26,39 +24,86 @@ customUtils = {
             });
         });
     },
-    pullCode: function () {
+    getJson: function () {
+        return new Promise(function (resolve, reject) {
+            properties.parse("./config/aws.json", { path: true }, function (error, prop) {
+                if (error) reject(error);
+                resolve(prop);
+            });
+        });
+    },
+    devRepoClone: function () {
         let _self = this;
         return new Promise(function (resolve, reject) {
-            if (fs.existsSync(directoryPath + '/test')) {
-                try{
-                    require('simple-git/promise')(directoryPath + '/test')
-                    .pull((err, update) => {
-                        if(update && update.summary.changes) {
-                           require('child_process').exec('npm restart');
-                        }
-                     });
-                    resolve({ msg: 'update successfully' });
-                }catch(err){
+            if (!fs.existsSync(directoryPath + '/DeveloperRepo')) {
+                try {
+                    _self.getProperties().then(data => {
+                        let remote = `https://${data.username}:${data.password}@${data.repository}`;
+                        git.silent(true)
+                            .clone(remote)
+                            .then(() => resolve({ "msg": "Developer repository clone successfully" }));
+                    }).catch(err => {
+                        _self.myConsole("Please check, Something is wrong " + err);
+                        reject(err);
+                    });
+                } catch (err) {
                     reject(err);
                 }
-                
-            } else {
-                _self.getProperties().then(data => {
-                    let remote = `https://${data.username}:${data.password}@${data.repository}`;
+            }
+
+        });
+    },
+    AwsRepoClone: function () {
+        let _self = this;
+        return new Promise(function (resolve, reject) {
+            if (!fs.existsSync(directoryPath + '/lambda-pipeline-repo-pst')) {
+                try {
+
+                    const REPO = config.REPO;
+
+                    let remote = `${REPO}`;
+
                     git.silent(true)
                         .clone(remote)
-                        .then(() => resolve({ "msg": "clone successfully" }));
-                }).catch(err => {
-                    _self.myConsole("Please check, Something is wrong " +err);
+                        .then(() => resolve({ "msg": "AWS repository clone successfully" }))
+                        .catch((err) => console.error('failed: ', err));
+                }
+                catch (err) {
+                    _self.myConsole("Please check, Something is wrong " + err);
                     reject(err);
-                });
+                }
+
             }
+
+        });
+    },
+    syncPullCode: function () {
+        let _self = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                if (fs.existsSync(directoryPath + '/DeveloperRepo')) {
+
+                    require('simple-git/promise')(directoryPath + '/DeveloperRepo')
+                        //.reset(['--hard','origin/master'])
+                        .pull((err, update) => {
+                            if (update && update.summary.changes) {
+                                require('child_process').exec('npm restart');
+                            }
+                        });
+                    resolve('files pulled');
+                }
+
+            } catch (error) {
+                reject(error)
+            }
+
+
         });
     },
     listRepoDirectories: function () {
         let _self = this;
         return new Promise(function (resolve, reject) {
-            let repoDir = directoryPath + '/test';
+            let repoDir = directoryPath + '/DeveloperRepo';
             let array = [];
             fs.readdir(repoDir, function (err, files) {
 
@@ -77,59 +122,70 @@ customUtils = {
             });
         });
     },
-    cleanDirectory: function (myDir) {
-        fs.readdir(myDir, (err, files) => {
-            if (err) throw err;
-            for (const file of files) {
-                fs.unlink(path.join(myDir, file), err => {
-                    if (err) throw err;
-                });
-            }
+    deleteFiles: function () {
+        return new Promise((resolve, reject) => {
+            fs.readdir(lambdaDir, function (err, files) {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    files.forEach((filename) => {
+                        var filePath = path.join(lambdaDir, filename);
+                        var stat = fs.statSync(filePath);
+                        if (stat.isFile() && filename.indexOf(".git") == -1) {
+                            fs.unlink(lambdaDir + "/" + filename, function (err) {
+                                if (err) {
+                                    reject(err);
+                                }
+                                else {
+                                    resolve("files deleted from lambda directory succesfully ");
+                                }
+                            });
+                        }
+                    });
+                }
+            });
         });
     },
-    copyFilesToCommitDir: function (testPath) {
+    copyFilesToAwsRepo: function (testPath) {
         let _self = this;
         return new Promise(function (resolve, reject) {
 
             let array = [];
-            console.log(`directory : ` + testPath);
+            resolve(`directory : ` + testPath);
             fs.readdir(testPath, function (err, files) {
 
                 if (err) {
                     reject(err);
                 }
-                _self.cleanDirectory(commitDir);
-                files.forEach(function (fileName) {
 
-                    var filePath = path.join(testPath, fileName);
-                    var stat = fs.statSync(filePath);
+                else {
+                    files.forEach(function (fileName) {
 
-                    if (stat.isFile() && fileName.indexOf(".js") !== -1) {
-                        array.push({ fileName: fileName, filePath: filePath });
-                        var dotIndex = fileName.lastIndexOf(".");
-                        var name = fileName.slice(0, dotIndex);
-                        var newName = name + path.extname(fileName);
-                        var read = fs.createReadStream(path.join(filePath));
-                        var write = fs.createWriteStream(path.join(commitDir, newName));
-                        read.pipe(write);
-                    }
-                });
-                resolve(array);
+                        var filePath = path.join(testPath, fileName);
+                        var stat = fs.statSync(filePath);
+                        if (stat.isFile()) {
+                            array.push({ fileName: fileName, filePath: filePath });
+                            var dotIndex = fileName.lastIndexOf(".");
+                            var name = fileName.slice(0, dotIndex);
+                            var newName = name + path.extname(fileName);
+                            var read = fs.createReadStream(path.join(filePath));
+                            var write = fs.createWriteStream(path.join(lambdaDir, newName));
+                            read.pipe(write);
+                        }
+                    });
+                    resolve(array);
+                }
             });
         });
     },
-    convertJStoYaml : function(dirName){
-        let _self = this;
-        return new Promise(function(resolve, reject){
-            try{
-                _self.cleanDirectory(convertDir);
-                jsToYaml.tiggerPoint(dirName);
-                resolve("success");
-            }catch(err){
-                reject(err);
-            }
-        }); 
+    convertJStoYaml: function (dirName) {
+
+        return new Promise(function (resolve, reject) {
+            jsToYaml.tiggerPoint(dirName)
+                .then(data =>{resolve(data); })
+                .catch(err =>{ reject(err); })
+        });
     }
 }
-
 module.exports = customUtils;

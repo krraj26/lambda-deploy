@@ -3,7 +3,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-require('./util/utility').pullCode();
+require('./util/utility').devRepoClone();
+require('./util/utility').AwsRepoClone();
 
 var indexRouter = require('./routes/index');
 

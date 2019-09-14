@@ -1,144 +1,180 @@
 const fs = require("fs");
 const path = require("path");
 var writeData = require('write-data');
-var readline = require("readline");
-const commitDir = path.join(__dirname, '../public/commitDir');
-if (!fs.existsSync(commitDir)) fs.mkdirSync(commitDir, { recursive: true });
-const convertDir = path.join(__dirname, '../public/convertDIR')
-if (!fs.existsSync(convertDir)) fs.mkdirSync(convertDir, { recursive: true });
-const sampleDir = path.join(__dirname, '../sample');
-if (!fs.existsSync(sampleDir)) fsmkdirSync(sampleDir, { recursive: true });
 const git = require('simple-git');
 const config = require("../config/aws.json");
-var lambdaDir = path.join(__dirname, '../public/static/lambda-repo-pst');
-var awsCli = require('aws-cli-js');
+var lambdaDir = path.join(__dirname, '../public/static/lambda-pipeline-repo-pst');
+var configlambda = path.join(__dirname, '../public/static/lambda-pipeline-repo-pst/config.json');
+const AWS = require('aws-sdk');
+const awsConfig = require("../config/pipeline.json");
+const jsdom = require("jsdom");
+const { JSDOM } = jsdom;
+const { window } = new JSDOM();
+const { document } = (new JSDOM('')).window;
+global.document = document;
 
+var $ = jQuery = require('jquery')(window);
+var statusInterval;
 var fileConvertor = {
-    npmDependencies: [],
 
-    tiggerPoint: function (dirName) {
-        _self = this;
-        var npm;
-
-        _self.copyandConvert();
-        _self.replaceContentTemplate(dirName)
-            .then(data => {
-                return _self.readWriteFile('/template.yaml', data);
-                // console.log(data)
-            }).then(data => {
-                _self.replaceContentBuildSpec(dirName)
-                    .then(data => {
-                        return _self.readWriteFile('/buildspec.yaml', data);
-                        // console.log(data)
-                    }).then(data => {
-                        _self.asyncAwaitCode();
-                    })
-
-                    .catch(err => {
-                        console.log(err);
-                    });
-
-            });
-
-    },
-
-    copyandConvert: function () {
-        fs.readdir(commitDir, function (err, files) {
-            if (err) {
-                console.log(err);
-            }
-            let array = [];
-            files.forEach(function (fileName) {
-
-                var filePath = path.join(commitDir, fileName);
-                var stat = fs.statSync(filePath);
-
-                if (stat.isFile() && fileName.indexOf(".js") !== -1) {
-
-                    array.push({ fileName: fileName });
-
-                    var dotIndex = fileName.lastIndexOf(".");
-                    var name = fileName.slice(0, dotIndex)
-                    var newName = name + path.extname(fileName);
-
-                    var read = fs.createReadStream(path.join(filePath));
-                    fs.unlink(filePath, (err) => {
-                        if (err) {
-                            console.error(err)
-                        }
-                        console.log("File removed from convertDIR successfully :" + fileName);
-                    });
-                    var write = fs.createWriteStream(path.join(convertDir, newName));
-                    read.pipe(write);
-                }
-
-            });
-
-        });
-    },
-
-    moveFiles: function (oldPath, newPath) {
+    tiggerPoint: function () {
         return new Promise((resolve, reject) => {
-            fs.readdir(convertDir, function (err, files) {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    console.log(files);
+            _self = this;
+          return _self.deployeCode()
+                .then(data => {
+                    _self.pipelineSucceed()
+                        .then(data => { resolve(data); })
+                        .catch(err => { reject(err); })
+                })
+                .catch(err => reject(err))
 
-                    files.forEach((filename) => {
-                        var filepath = path.join(convertDir, filename);
-                        var stat = fs.statSync(filepath);
-
-                        if (stat.isFile() && filename.indexOf(".") !== -1) {
-                            fs.rename(convertDir + "/" + filename, lambdaDir + "/" + filename, function (err) {
-                                resolve('Move complete.');
-                            });
-                        }
-
-                    });
-
-                }
-
-            });
         })
     },
 
-    readWriteFile: function (writeTo, content) {
+    buildConversion: function () {
         return new Promise((resolve, reject) => {
-            fs.writeFile(convertDir + writeTo, content, 'utf8', function (err) {
-                if (err) { reject(err); }
-                else {
-                    resolve("success");
-                }
-            });
-        });
-    },
-    replaceContentTemplate: function (dirName) {
-        return new Promise(function (resolve, reject) {
-            fs.readFile(sampleDir + '/template.yaml', 'utf8', function read(err, data) {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    data = data.replace(/{{dirName}}/g, dirName);
-                    resolve(data);
+            try {
+                var buildFile = {
+                    "version": 0.2,
+                    "phases": {
+                        "install": {
+                            "runtime-versions": {
+                                "nodejs": 10
+                            }
+                        },
+                        "build": {
+                            "commands": [
+                                "npm install",
+                                "export BUCKET=lambda-pipeine-s3-pst",
+                                "aws cloudformation package --template-file template.yaml --s3-bucket $BUCKET --output-template-file outputtemplate.yaml"
+                            ]
+                        }
+                    },
+                    "artifacts": {
+                        "type": "zip",
+                        "files": [
+                            "template.yaml",
+                            "outputtemplate.yaml"
+                        ]
+                    }
                 }
 
-            });
-        });
-    },
-    replaceContentBuildSpec: function (dirName) {
-        return new Promise(function (resolve, reject) {
-            fs.readFile(sampleDir + '/buildspec.yaml', 'utf8', function read(err, data) {
-                if (err) { reject(err); }
-                else {
-                    resolve(data);
-                }
-            });
-        });
+                fs.readdir(lambdaDir, function (err, data) {
+                    if (err) {
+                        console.log(err)
+                    }
+                    else {
+
+                        writeData(lambdaDir + '/buildspec.yml', buildFile, function (err) {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve("success");
+                            }
+                        })
+                    }
+                })
+
+            } catch (error) {
+                console.log("please check build file " + error)
+            }
+        })
     },
 
+    templateConfigchange: function () {
+        return new Promise((resolve, reject) => {
+            try {
+                if (fs.existsSync(configlambda)) {
+                    fs.readFile(configlambda, 'utf-8', function (err, data) {
+                        if (err) reject(err);
+                        else {
+                            let getData = JSON.parse(data);
+                            let status = getData.statusCode;
+
+                            // console.log(status);
+                            var i = 0;
+                            var integrationResponses = [];
+                            for (var j = 0; j < status.length; j++) {
+                                var obj = {
+                                    "StatusCode": status[j].status
+                                }
+                                integrationResponses.push(obj);
+                            }
+                            //console.log(integrationResponses);
+                            //var params = getData.queryParameter;
+                            //console.log(params)
+
+                            // var parameters = [];
+                            // for (var j = 0; j < params.length; j++) {
+                            //     var obj = params[j]
+                            //     parameters.push(obj);
+                            // }
+                            // //console.log(parameters);
+
+                            // var queryParam = {};
+                            // queryParam[getData.method] = { "parameters": parameters }
+
+                            var resources = {};
+                            resources[getData.lambda] = {
+                                "Type": "AWS::Serverless::Function",
+                                "Properties": {
+                                    "Handler": getData.name + ".handler",
+                                    "Runtime": "nodejs10.x",
+                                    "CodeUri": "./",
+                                    "Events": {
+                                        "MyTimeApi": {
+                                            "Type": "Api",
+                                            "Properties": {
+                                                "Path": getData.path,
+                                                "Method": getData.method,
+                                            },
+
+                                            "Integration": {
+                                                "CacheKeyParameters": [
+                                                    "method.request.path.proxy"
+                                                ],
+                                                "RequestParameters": {
+                                                    "integration.request.path.proxy": "method.request.path.proxy"
+                                                },
+
+                                                "Type": "AWS_PROXY",
+                                                "PassthroughBehavior": "WHEN_NO_MATCH",
+                                                "IntegrationResponses": integrationResponses
+                                            }
+                                        }
+                                    }
+
+                                }
+                            };
+                            var template = {
+                                "AWSTemplateFormatVersion": "2010-09-09",
+                                "Transform": "AWS::Serverless-2016-10-31",
+                                "Description": "Outputs the time",
+                                "Resources": resources
+                            }
+                            fs.readdir(lambdaDir, function (err, data) {
+                                if (err) { reject(err); }
+                                else {
+
+                                    writeData(lambdaDir + '/template.yaml', template, function (err) {
+                                        if (err) {
+                                            reject(err);
+                                        } else {
+                                            resolve("success");
+                                        }
+                                    })
+                                }
+                            });
+                        }
+                    })
+
+                }
+            } catch (error) {
+                reject("Please provide config file" + error)
+            }
+
+        });
+    },
     codeCommitToAWS: function () {
         return new Promise((resolve, reject) => {
             const USER = config.USER;
@@ -151,67 +187,98 @@ var fileConvertor = {
                     .commit("first commit!")
                     .push(['-u', 'origin', 'master'],
                         () => {
-                            console.log("files pushed to AWS repository successfully");
-                            resolve(true);
-                        });
 
+                            resolve("files pushed to AWS repository successfully");
+                        });
             } catch (error) {
-                console.log("Please check your network" + error);
-                reject(err);
+
+                reject("code commit error" + error);
             }
         });
     },
-
-    deleteFiles: function () {
+    pipelineExecute: function () {
         return new Promise((resolve, reject) => {
-            fs.readdir(lambdaDir, function (err, files) {
+            const config = {
+                accessKeyId: awsConfig.aws_access_key_id,
+                secretAccessKey: awsConfig.aws_secret_access_key,
+                region: awsConfig.region
+            }
+            var codepipeline = new AWS.CodePipeline(config);
+            var params = {
+                name: 'lambda-pipeline-dev'
+            };
+            codepipeline.startPipelineExecution(params, function (err, data) {
+                if (err) { reject("pipeline error" + err) }
+                else {
+
+                    resolve('AWS pipeline run Successfully ');
+                }
+            });
+        })
+    },
+    pipelineInterval: function () {
+        return new Promise((resolve, reject) => {
+
+            try {
+                statusInterval = setInterval(() => {
+                    _self.pipelineSucceed()
+                        .then(data => { resolve(data); })
+                        .catch(err => { reject(err); });
+                }, 40000);
+            } catch (error) {
+                console.log("pipeline errr"+error)
+            }
+           
+        });
+    },
+    pipelineSucceed: function () {
+        return new Promise((resolve, reject) => {
+
+            const config = {
+                accessKeyId: awsConfig.aws_access_key_id,
+                secretAccessKey: awsConfig.aws_secret_access_key,
+                region: awsConfig.region
+            }
+            var codepipeline = new AWS.CodePipeline(config);
+            var params = {
+                name: 'lambda-pipeline-dev'
+            };
+            codepipeline.getPipelineState(params, function (err, data) {
                 if (err) {
-                    reject(err);
+                    reject("pipeline error" + err)
                 }
                 else {
-                    files.forEach((filename) => {
-                        var filePath = path.join(lambdaDir, filename);
-                        var stat = fs.statSync(filePath);
-                        if (stat.isFile() && filename.indexOf(".git") == -1) {
-                            fs.unlink(lambdaDir + "/" + filename, function (err) {
-                                if (err) {
-                                    reject(err);
-                                }
-                                else {
-                                    console.log("file deleted from lambdaDIR succesfully " + filename);
-                                    resolve(true);
-                                }
-                            });
-                        }
-                    });
+                    try {
+                
+              //  console.log(JSON.stringify(data));  
+                    
+                    // if (source == "Succeeded" && build == "Succeeded" && deploy == "Succeeded") {
+
+                    //     clearInterval(statusInterval);
+                        resolve(data);
+
+                    // }
+                    // else if (source == "Failed" || build == "Failed" || deploy == "Failed") {
+
+                    //     clearInterval(statusInterval);
+                    //     reject('pipeline executation failed');
+
+                    // }
+                    } catch (error) {
+                        console.log("new pipeline" +error)
+                    }
                 }
             });
         });
     },
 
-    pipeline: function () {
-        return new Promise((resolve, reject) => {
-            var Options = awsCli.Options;
-            var Aws = awsCli.Aws
-            var Key = require("../config/pipeline.json");
+    deployeCode: async function () {
+        await _self.templateConfigchange().then(data => { console.log("template file " + data) }).catch(err => { console.log(err) });
+        await _self.buildConversion().then(data => { console.log("buildspec file " + data) }).catch(err => { console.log(err) });
+        await _self.codeCommitToAWS().then(data => { console.log(data) }).catch(err => { console.log(err) });
+        await _self.pipelineExecute().then(data => { console.log(data) }).catch(err => { console.log(err) });
+        // await _self.pipelineInterval().then(data => { console.log(data) }).catch(err => { console.log(err) });
 
-            var options = new Options(
-                AWS_ACCESS_KEY_ID = Key.aws_access_key_id,
-                AWS_SECRET_ACCESS_KEY = Key.aws_secret_access_key
-            );
-            var aws = new Aws(options);
-            aws.command('codepipeline start-pipeline-execution --name pipeline-pipeline').then(function (data) {
-                console.log('AWS Script run Successfully');
-            }).catch(err => { console.log("error" +err) });
-            resolve(true);
-        })
-    },
-    asyncAwaitCode: async function () {
-        const mf = await _self.moveFiles();
-        const cca = await _self.codeCommitToAWS();
-        const ld = await _self.deleteFiles();
-        const pl = await _self.pipeline();
-        //console.log(`${a} ${b} ${c}`);
     }
 }
 module.exports = fileConvertor;

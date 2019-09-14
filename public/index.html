@@ -1,98 +1,289 @@
-
 <!DOCTYPE html>
 <html>
 
 <head>
-  <title>:: AWS ::</title>
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-  <script src="https://code.jquery.com/jquery-3.4.1.min.js"
-    integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
-    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
-    crossorigin="anonymous"></script>
-  <link rel='stylesheet' href='/stylesheets/style.css' />
+	<title>:: AWS ::</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+		integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+	<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+		integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+		integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+		crossorigin="anonymous"></script>
+
+	<link rel='stylesheet' href='/stylesheets/style.css' />
+	<style>
+		#sync {
+			background: url("http://localhost:3000/images/sync.png");
+			cursor: pointer;
+			width: 40px;
+			height: 40px;
+			transform: rotate(45deg);
+			border: none;
+			animation: rotate 1s infinite;
+			-webkit-animation: rotate 1s infinite;
+		}
+
+		@keyframes rotate {
+			0% {
+				transform: rotate(0deg);
+			}
+
+			100% {
+				transform: rotate(360deg);
+			}
+		}
+	</style>
 </head>
 
 <body>
 	<title>AWS Test</title>
 	<div class="container" style="text-align:center">
 		<div class="row">
-		  	<div class="col-sm">
-				<div  class="form-group">
-					<select  class="browser-default custom-select" id="selectOne" ></select>
+			<div class="col-sm">
+				<div class="form-group">
+					<button class="btn btn-secondary" id="sync">sync</select>
+				</div>
+
+			</div>
+			<div class="col-sm">
+				<div class="form-group">
+					<select class="browser-default custom-select" id="selectOne" value="default"></select>
 				</div>
 			</div>
-		  	<div class="col-sm">
+			<div class="col-sm">
 				<div class="form-group">
-					<input class="form-control" id="selectedDir" value="" disabled/>        				
+					<input class="form-control" id="selectedDir" value="" disabled />
 				</div>
 			</div>
-		  	<div class="col-sm">
+			<div class="col-sm">
 				<div class="form-group">
-					<button  class="btn btn-primary" id="myButton" disabled=disabled>Deploy</select>
+					<button class="btn btn-primary" id="myButton" disabled=disabled>Deploy</select>
 				</div>
 			</div>
 		</div>
-	  </div>
+		<div id="pipelineStatus" style="display: block;" class="row">
+			<div id="source" class="col-md-4">
+				<label>SOURCE</label>
+				<span></span>
+			</div>
+			<div id="build" class="col-md-4">
+				<label>BUILD</label>
+				<span></span>
+			</div>
+			<div id="deploy" class="col-md-4">
+				<label>DEPLOY</label>
+				<span></span>
+			</div>
+		</div>
+
+	</div>
+
+
 </body>
 <script>
 
-$(document).ready(function(){ 
-	$.ajax({
-      type: "GET",
-      url: 'http://localhost:3000/api/v1/directories',
-      contentType: "application/json",      
-      success: function (data) {
-		 // console.log(data)
-		  $.each(data, function(index, value){
-			  $('#selectOne').append('<option value='+value.filePath+'>'+value.fileName+'</option>');
-		  });		
-      },
-	  error : function(err){
-		 // alert("unable to fetch data");
-	  }
-    });
+	$(document).ready(function () {
 
+		var interval;
+		var getStatus;
 
-    $('#selectOne').on('change', function (filePath) {
-		$('#selectedDir').val($('#selectOne option:selected').text());
-		filePath = $('option:selected', $(this)).val();
-		$.ajax({
-			type: "POST",
-			url: 'http://localhost:3000/api/v1/files',
-			contentType: "application/json",
-			data: JSON.stringify({ filePath: filePath }),
-			success: function (data) {
-				$('#myButton').prop("disabled", false);
-				console.log(data);
-			},
-			error:  function(err){
-				console.log(err);
-			}
-		});		
-	});
-
-	$('#myButton').on('click', function(){
-		let dirName = $('#selectedDir').val();
-		$('#myButton').prop("disabled", true);			
-		
 		$.ajax({
 			type: "GET",
-			url: 'http://localhost:3000/api/v1/execute/'+dirName,
-			contentType: "application/json",      
+			url: 'http://localhost:3000/api/v1/directories',
+			contentType: "application/json",
+			cache: false,
 			success: function (data) {
 				console.log(data)
+				$.each(data, function (index, value) {
+					$('#selectOne').append('<option value=' + value.filePath + '>' + value.fileName + '</option>');
+				});
 			},
-			error : function(err){
-				//alert("unable to fetch data");
+			error: function (err) {
+				console.log(err)
 			}
 		});
-		
-	});
 
-});
+		$('#selectOne').on('change', function (filePath) {
+			$('#selectedDir').val($('#selectOne option:selected').text());
+			filePath = $('option:selected', $(this)).val();
+			if (this.value == '1') {
+				$("#span").hide();
+			}
+
+			$.ajax({
+				type: "POST",
+				url: 'http://localhost:3000/api/v1/files',
+				contentType: "application/json",
+				cache: false,
+				data: JSON.stringify({ filePath: filePath }),
+				success: function (data) {
+					$('#myButton').prop("disabled", false);
+					console.log(data);
+				},
+				error: function (err) {
+					console.log(err);
+				}
+			});
+		});
+
+		$('#myButton').on('click', function () {
+			let dirName = $('#selectedDir').val();
+			$('#myButton').prop("disabled", true);
+
+			$.ajax({
+				type: "GET",
+				url: 'http://localhost:3000/api/v1/execute/' + dirName,
+				contentType: "application/json",
+				cache: false,
+				success: function (data) {
+
+					getStatus = data;
+					// data = JSON.parse(data);
+					$("#pipelineStatus").css("display", "block");
+
+					var source = data.stageStates[0].latestExecution.status;
+					var sourceId = data.stageStates[0].latestExecution.pipelineExecutionId;
+					$('#source').find('span').text(sourceId);
+					if (source == 'InProgress')
+						$('#source').find('label').css('background', 'yellow');
+					if (source == 'Succeeded')
+						$('#source').find('label').css('background', 'green');
+					if (source == 'Failed')
+						$('#source').find('label').css('background', 'red');
+
+					var build = data.stageStates[1].latestExecution.status;
+					var buildId = data.stageStates[1].latestExecution.pipelineExecutionId;
+					$('#build').find('span').text(buildId);
+					if (build == 'InProgress')
+						$('#build').find('label').css('background', 'yellow');
+					if (build == 'Succeeded')
+						$('#build').find('label').css('background', 'green');
+					if (build == 'Failed')
+						$('#build').find('label').css('background', 'red');
+
+
+					var deploy = data.stageStates[2].latestExecution.status;
+					var deployId = data.stageStates[2].latestExecution.pipelineExecutionId;
+					$('#deploy').find('span').text(deployId);
+					if (deploy == 'InProgress')
+						$('#deploy').find('label').css('background', 'yellow');
+					if (deploy == 'Succeeded')
+						$('#deploy').find('label').css('background', 'green');
+					if (deploy == 'Failed')
+						$('#deploy').find('label').css('background', 'red');
+
+
+					interval = setInterval(function () {
+						checkStatus()
+					}, 10000);
+
+
+
+				},
+				error: function (err) {
+
+					$("#span").css('color', 'red');
+					$("#span").html("Something is wrong, Please check " + JSON.stringify(err));
+
+				}
+			});
+
+		});
+
+		$("#sync").on('click', function () {
+			$.ajax({
+				type: "GET",
+				url: 'http://localhost:3000/api/v1/pullfiles',
+				contentType: "application/json",
+				cache: false,
+				success: function (data) {
+					$("#span").css('color', 'green');
+					$("#span").html(data);
+				},
+				error: function (err) {
+					$("#span").css('color', 'red');
+					$("#span").html("Something is wrong, Please check ");
+
+				}
+			});
+		});
+
+		function checkStatus() {
+			var pipelineStatus;
+			pipelineStatus = getStatus;
+			var source = pipelineStatus.stageStates[0].latestExecution.status;
+			var build = pipelineStatus.stageStates[1].latestExecution.status;
+			var deploy = pipelineStatus.stageStates[2].latestExecution.status;
+			var sourceId = pipelineStatus.stageStates[0].latestExecution.pipelineExecutionId;
+			var buildId = pipelineStatus.stageStates[1].latestExecution.pipelineExecutionId;
+			var depolyId = pipelineStatus.stageStates[2].latestExecution.pipelineExecutionId;
+			if (sourceId == buildId && buildId == depolyId) {
+				if (source == "Failed" || build == "Failed" || deploy == "Failed") {
+					clearInterval(interval);
+
+				}
+
+				else if (source == "Succeeded" && build == "Succeeded" && deploy == "Succeeded") {
+					clearInterval(interval);
+				}
+			}
+
+
+
+			$.ajax({
+				type: "GET",
+				url: 'http://localhost:3000/api/v1/status',
+				contentType: "application/json",
+				cache: false,
+				success: function (data) {
+
+					getStatus = data;
+					$("#pipelineStatus").css("display", "block");
+
+					source = data.stageStates[0].latestExecution.status;
+					sourceId = data.stageStates[0].latestExecution.pipelineExecutionId;
+					$('#source').find('span').text(sourceId);
+					if (source == 'InProgress')
+						$('#source').find('label').css('background', 'yellow');
+					if (source == 'Succeeded')
+						$('#source').find('label').css('background', 'green');
+					if (source == 'Failed')
+						$('#source').find('label').css('background', 'red');
+
+					build = data.stageStates[1].latestExecution.status;
+					buildId = data.stageStates[1].latestExecution.pipelineExecutionId;
+					$('#build').find('span').text(buildId);
+					if (build == 'InProgress')
+						$('#build').find('label').css('background', 'yellow');
+					if (build == 'Succeeded')
+						$('#build').find('label').css('background', 'green');
+					if (build == 'Failed')
+						$('#build').find('label').css('background', 'red');
+
+
+					deploy = data.stageStates[2].latestExecution.status;
+					deployId = data.stageStates[2].latestExecution.pipelineExecutionId;
+					$('#deploy').find('span').text(deployId);
+					if (deploy == 'InProgress')
+						$('#deploy').find('label').css('background', 'yellow');
+					if (deploy == 'Succeeded')
+						$('#deploy').find('label').css('background', 'green');
+					if (deploy == 'Failed')
+						$('#deploy').find('label').css('background', 'red');
+
+
+				},
+				error: function (err) {
+
+
+				}
+			});
+		}
+
+	});
 
 </script>
 
